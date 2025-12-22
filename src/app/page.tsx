@@ -9,7 +9,10 @@ export default function Page() {
   const { user } = useAuthStore();
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      router.replace("/login");
+      return;
+    }
 
     if (user.role === "admin") {
       router.replace("/admin");
