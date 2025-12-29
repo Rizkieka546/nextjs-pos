@@ -1,4 +1,7 @@
+"use client";
+
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 import { Product } from "./productStore";
 
 /* -------------------------------------------------------------------------- */
@@ -17,18 +20,24 @@ export interface Transaction {
   paymentMethod: "cash" | "card";
   amountPaid: number;
   change: number;
-  timestamp: Date;
+  timestamp: string; // ISO string (AMAN untuk persist)
   cashierId: string;
 }
 
 interface CartState {
   items: CartItem[];
   transactions: Transaction[];
+
+  /* Cart actions */
   addToCart: (product: Product) => void;
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
+
+  /* Helpers */
   getTotal: () => number;
+
+  /* Checkout */
   checkout: (
     paymentMethod: "cash" | "card",
     amountPaid: number,
@@ -36,124 +45,110 @@ interface CartState {
   ) => Transaction;
 }
 
-/* -------------------------------------------------------------------------- */
-/*                        Mock Transaction Generator                           */
-/* -------------------------------------------------------------------------- */
+const seedTransactions = (): Transaction[] => {
+  const baseDate = new Date();
 
-/**
- * Membuat data transaksi palsu untuk demo / dashboard
- * Aman, tidak mengganggu checkout asli
- */
-const generateMockTransactions = (): Transaction[] => {
-  const today = new Date();
-  const transactions: Transaction[] = [];
+  return Array.from({ length: 5 }).map((_, i) => {
+    const date = new Date(baseDate);
+    date.setDate(baseDate.getDate() - i);
 
-  for (let i = 0; i < 10; i++) {
-    const date = new Date(today);
-    date.setDate(today.getDate() - i);
+    const total = 100_000 + i * 50_000;
 
-    const total = Math.floor(Math.random() * 500_000) + 100_000; // 100k – 600k
-
-    transactions.push({
+    return {
       id: `seed-${i}`,
       items: [],
       total,
-      paymentMethod: Math.random() > 0.5 ? "cash" : "card",
+      paymentMethod: i % 2 === 0 ? "cash" : "card",
       amountPaid: total,
       change: 0,
-      timestamp: date,
+      timestamp: date.toISOString(),
       cashierId: "demo",
-    });
-  }
-
-  return transactions;
+    };
+  });
 };
 
-/* -------------------------------------------------------------------------- */
-/*                                   Store                                    */
-/* -------------------------------------------------------------------------- */
+export const useCartStore = create<CartState>()(
+  persist(
+    (set, get) => ({
+      items: [],
+      transactions: [],
 
-const IS_DEV = process.env.NODE_ENV === "development";
+      addToCart: (product) =>
+        set((state) => {
+          const existing = state.items.find(
+            (item) => item.product.id === product.id
+          );
 
-export const useCartStore = create<CartState>((set, get) => ({
-  /* ------------------------------ State ---------------------------------- */
-  items: [],
-  transactions: IS_DEV ? generateMockTransactions() : [],
+          if (existing) {
+            return {
+              items: state.items.map((item) =>
+                item.product.id === product.id
+                  ? { ...item, quantity: item.quantity + 1 }
+                  : item
+              ),
+            };
+          }
 
-  /* --------------------------- Cart Actions ------------------------------ */
+          return {
+            items: [...state.items, { product, quantity: 1 }],
+          };
+        }),
 
-  addToCart: (product) =>
-    set((state) => {
-      const existingItem = state.items.find(
-        (item) => item.product.id === product.id
-      );
+      removeFromCart: (productId) =>
+        set((state) => ({
+          items: state.items.filter(
+            (item) => item.product.id !== productId
+          ),
+        })),
 
-      if (existingItem) {
-        return {
+      updateQuantity: (productId, quantity) =>
+        set((state) => ({
           items: state.items.map((item) =>
-            item.product.id === product.id
-              ? { ...item, quantity: item.quantity + 1 }
+            item.product.id === productId
+              ? { ...item, quantity }
               : item
           ),
+        })),
+
+      clearCart: () => set({ items: [] }),
+
+      getTotal: () =>
+        get().items.reduce(
+          (sum, item) =>
+            sum + item.product.price * item.quantity,
+          0
+        ),
+
+      checkout: (paymentMethod, amountPaid, cashierId) => {
+        const total = get().getTotal();
+
+        const transaction: Transaction = {
+          id: Date.now().toString(),
+          items: get().items,
+          total,
+          paymentMethod,
+          amountPaid,
+          change: amountPaid - total,
+          timestamp: new Date().toISOString(),
+          cashierId,
         };
-      }
 
-      return {
-        items: [...state.items, { product, quantity: 1 }],
-      };
+        set((state) => ({
+          transactions: [...state.transactions, transaction],
+          items: [],
+        }));
+
+        return transaction;
+      },
     }),
+    {
+      name: "cart-storage",
 
-  removeFromCart: (productId) =>
-    set((state) => ({
-      items: state.items.filter(
-        (item) => item.product.id !== productId
-      ),
-    })),
-
-  updateQuantity: (productId, quantity) =>
-    set((state) => ({
-      items: state.items.map((item) =>
-        item.product.id === productId
-          ? { ...item, quantity }
-          : item
-      ),
-    })),
-
-  clearCart: () => set({ items: [] }),
-
-  /* ------------------------------ Helpers -------------------------------- */
-
-  getTotal: () => {
-    const { items } = get();
-    return items.reduce(
-      (total, item) =>
-        total + item.product.price * item.quantity,
-      0
-    );
-  },
-
-  /* ------------------------------ Checkout ------------------------------- */
-
-  checkout: (paymentMethod, amountPaid, cashierId) => {
-    const { items, getTotal, clearCart } = get();
-    const total = getTotal();
-
-    const transaction: Transaction = {
-      id: Date.now().toString(),
-      items: [...items],
-      total,
-      paymentMethod,
-      amountPaid,
-      change: amountPaid - total,
-      timestamp: new Date(),
-      cashierId,
-    };
-
-    set((state) => ({
-      transactions: [...state.transactions, transaction],
-    }));
-
-    clearCart();
-    return transaction;
-  },
-}));
+      onRehydrateStorage: () => (state) => {
+        if (state && state.transactions.length === 0) {
+          state.transactions = seedTransactions();
+        }
+      },
+    }
+  )
+);

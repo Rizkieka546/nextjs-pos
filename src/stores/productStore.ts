@@ -9,7 +9,7 @@ export interface Product {
   price: number;
   stock: number;
   categoryId: string;
-  image: string; // Ubah menjadi wajib untuk konsistensi UI
+  image: string; 
 }
 
 export interface Category {
