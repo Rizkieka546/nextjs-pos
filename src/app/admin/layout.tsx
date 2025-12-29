@@ -22,10 +22,12 @@ export default function ProtectedLayout({
   if (!isAuthenticated) return null;
 
   return (
-    <div className="flex min-h-screen w-full bg-gray-900">
+    <div className="flex h-screen w-full overflow-hidden bg-[#0B0F1A]">
       <AppSidebar />
-      <main className="flex-1 overflow-auto">
-        {children}
+      <main className="flex-1 overflow-y-auto bg-gray-900/50">
+        <div className="h-full w-full">
+          {children}
+        </div>
       </main>
     </div>
   );

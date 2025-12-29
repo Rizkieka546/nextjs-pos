@@ -1,3 +1,5 @@
+"use client";
+
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
@@ -7,7 +9,7 @@ export interface Product {
   price: number;
   stock: number;
   categoryId: string;
-  image?: string;
+  image: string; // Ubah menjadi wajib untuk konsistensi UI
 }
 
 export interface Category {
@@ -35,15 +37,16 @@ const initialCategories: Category[] = [
   { id: '4', name: 'Lainnya', color: '#ec4899' },
 ];
 
+
 const initialProducts: Product[] = [
-  { id: '1', name: 'Nasi Goreng', price: 25000, stock: 50, categoryId: '1' },
-  { id: '2', name: 'Mie Goreng', price: 22000, stock: 45, categoryId: '1' },
-  { id: '3', name: 'Ayam Bakar', price: 35000, stock: 30, categoryId: '1' },
-  { id: '4', name: 'Es Teh Manis', price: 5000, stock: 100, categoryId: '2' },
-  { id: '5', name: 'Kopi Hitam', price: 8000, stock: 80, categoryId: '2' },
-  { id: '6', name: 'Jus Jeruk', price: 12000, stock: 40, categoryId: '2' },
-  { id: '7', name: 'Keripik', price: 10000, stock: 60, categoryId: '3' },
-  { id: '8', name: 'Cokelat Bar', price: 15000, stock: 35, categoryId: '3' },
+  { id: '1', name: 'Nasi Goreng', price: 25000, stock: 50, categoryId: '1', image: '/products/nasgor.png' },
+  { id: '2', name: 'Mie Goreng', price: 22000, stock: 45, categoryId: '1', image: '/products/miegoreng.png' },
+  { id: '3', name: 'Ayam Bakar', price: 35000, stock: 30, categoryId: '1', image: '/products/ayambakar.png' },
+  { id: '4', name: 'Es Teh Manis', price: 5000, stock: 100, categoryId: '2', image: '/products/esteh.png' },
+  { id: '5', name: 'Kopi Hitam', price: 8000, stock: 80, categoryId: '2', image: '/products/kopi.png' },
+  { id: '6', name: 'Jus Jeruk', price: 12000, stock: 40, categoryId: '2', image: '/products/jusjeruk.png' },
+  { id: '7', name: 'Keripik', price: 10000, stock: 60, categoryId: '3', image: '/products/keripik.png' },
+  { id: '8', name: 'Cokelat Bar', price: 15000, stock: 35, categoryId: '3', image: '/products/coklat.png' },
 ];
 
 export const useProductStore = create<ProductState>()(
